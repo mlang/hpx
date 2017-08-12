@@ -60,6 +60,16 @@ namespace hpx { namespace util { namespace detail
 
     ///////////////////////////////////////////////////////////////////////////
     template <typename ...Ts>
+    struct _always_true
+      : std::true_type
+    {};
+
+    template <typename ...Ts>
+    struct _always_false
+      : std::false_type
+    {};
+
+    template <typename ...Ts>
     struct all_of;
 
     template <bool ...Vs>
@@ -71,8 +81,15 @@ namespace hpx { namespace util { namespace detail
     {};
 
     template <typename ...Ts>
+    static std::false_type _all_of(...);
+
+    template <typename ...Ts>
+    static auto _all_of(int) -> _always_true<
+        typename std::enable_if<(bool)Ts::value>::type...>;
+
+    template <typename ...Ts>
     struct all_of
-      : all_of<pack_c<bool, ((bool)Ts::value)...> >
+      : decltype(detail::_all_of<Ts...>(0))
     {};
 
     template <>
@@ -86,13 +103,23 @@ namespace hpx { namespace util { namespace detail
     template <bool ...Vs>
     struct any_of<pack_c<bool, Vs...> >
       : std::integral_constant<bool,
-            !all_of<pack_c<bool, !Vs...> >::value
+            !std::is_same<
+                pack_c<bool, Vs...>
+              , pack_c<bool, (Vs && false)...> // false...
+            >::value
         >
     {};
 
     template <typename ...Ts>
+    static std::true_type _any_of(...);
+
+    template <typename ...Ts>
+    static auto _any_of(int) -> _always_false<
+        typename std::enable_if<!(bool)Ts::value>::type...>;
+
+    template <typename ...Ts>
     struct any_of
-      : any_of<pack_c<bool, ((bool)Ts::value)...> >
+      : decltype(detail::_any_of<Ts...>(0))
     {};
 
     template <>
@@ -105,12 +132,22 @@ namespace hpx { namespace util { namespace detail
 
     template <bool ...Vs>
     struct none_of<pack_c<bool, Vs...> >
-      : all_of<pack_c<bool, !Vs...> >
+      : std::is_same<
+            pack_c<bool, Vs...>
+          , pack_c<bool, (Vs && false)...> // false...
+        >
     {};
 
     template <typename ...Ts>
+    static std::false_type _none_of(...);
+
+    template <typename ...Ts>
+    static auto _none_of(int) -> _always_true<
+        typename std::enable_if<!(bool)Ts::value>::type...>;
+
+    template <typename ...Ts>
     struct none_of
-      : none_of<pack_c<bool, ((bool)Ts::value)...> >
+      : decltype(detail::_none_of<Ts...>(0))
     {};
 
     template <>
